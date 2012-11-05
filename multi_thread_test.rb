@@ -22,17 +22,17 @@ ActiveRecord::Base.establish_connection :adapter=>'sqlite3',
 require_relative 'test_model'
 
 # insert a record in.
-a = TestModel.new
-a.active = "a"
-a.cluster_name = "cluster"
-a.name = "aaaaa"
-a.save()
-
-b = TestModel.new
-b.active = "b"
-b.cluster_name = "cluster"
-b.name = "bbbbb"
-b.save()
+#a = TestModel.new
+#a.active = "a"
+#a.cluster_name = "cluster"
+#a.name = "aaaaa"
+#a.save()
+#
+#b = TestModel.new
+#b.active = "b"
+#b.cluster_name = "cluster"
+#b.name = "bbbbb"
+#b.save()
 
 
 def action_a()
@@ -59,12 +59,52 @@ end
 def action_b()
   count = 0
   total_time_passed = 0
+  #db = ActiveRecord::Base.connection.instance_variable_get("@connection")
+  #  db.busy_handler do |*args|
+  #    count +=1
+  #    puts "===================#{Thread.current.object_id} #{count}"
+  #    true
+  #  end
   begin_time = Time.now
   # logger must be on in order to see problem.
   ActiveRecord::Base.logger = Logger.new(STDOUT)
   500.times  do
     TestModel.transaction do
       TestModel.all.each do |s|
+        TestModel.transaction do
+          s.name=rand().to_s()
+          s.save()
+        end
+      end
+    end
+
+    count+=1
+    end_time = Time.now
+    passed = (end_time - begin_time) * 1000
+    total_time_passed += passed
+    begin_time = end_time
+    puts "===Action b's thread: #{Thread.current.object_id}, count reaches: #{count}. each round time: #{passed}, total time passed: #{total_time_passed}"
+  end
+end
+
+def action_c()
+  count = 0
+  total_time_passed = 0
+  #db = ActiveRecord::Base.connection.instance_variable_get("@connection")
+  #  db.busy_handler do |*args|
+  #    count +=1
+  #    puts "===================#{Thread.current.object_id} #{count}"
+  #    true
+  #  end
+  begin_time = Time.now
+  # logger must be on in order to see problem.
+  ActiveRecord::Base.logger = Logger.new(STDOUT)
+  500.times  do
+    #TestModel.transaction do
+      a =  TestModel.all
+    #end
+    TestModel.transaction do
+      a.each do |s|
         TestModel.transaction do
           s.name=rand().to_s()
           s.save()
@@ -102,6 +142,15 @@ def run_test_all_B()
   action_b
 end
 
+def run_test_all_C()
+  9.times do |i|
+    Thread.new do
+      action_c
+    end
+  end
+  action_c
+end
+
 def run_mix_test_A_B()
   5.times do |i|
     Thread.new do
@@ -122,5 +171,6 @@ run_test_all_A
 
 #run_test_all_B
 #run_mix_test_A_B
+#run_test_all_C
 
 puts "================End here"
